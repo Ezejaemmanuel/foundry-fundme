@@ -1,89 +1,78 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.18;
-
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import {PriceConverter} from "./PriceConverter.sol";
-
 error FundMe__NotOwner();
-
 contract FundMe {
     using PriceConverter for uint256;
-
+     // Mapping to track the amount funded by each address
     mapping(address => uint256) public addressToAmountFunded;
+     // Array to store the addresses of funders
     address[] public funders;
-
-    // Could we make this constant?  /* hint: no! We should make it immutable! */
-    address public  immutable  i_owner;
+     // Address of the contract owner
+    address public immutable owner;
+     // Minimum USD value required for funding
     uint256 public constant MINIMUM_USD = 5 * 10 ** 18;
-    
-    constructor() {
-        i_owner = msg.sender;
+     // Price feed interface
+    AggregatorV3Interface private priceFeed;
+    constructor(address priceFeedAddress) {
+        owner = msg.sender;
+        priceFeed = AggregatorV3Interface(priceFeedAddress);
     }
-
+    /**
+     * @dev Function to fund the contract with ETH.
+     * The amount of ETH sent must be greater than or equal to the minimum required USD value.
+     */
     function fund() public payable {
-        require(msg.value.getConversionRate() >= MINIMUM_USD, "You need to spend more ETH!");
-        // require(PriceConverter.getConversionRate(msg.value) >= MINIMUM_USD, "You need to spend more ETH!");
+        require(
+            msg.value.getConversionRate(priceFeed) >= MINIMUM_USD,
+            "You need to spend more ETH!"
+        );
         addressToAmountFunded[msg.sender] += msg.value;
         funders.push(msg.sender);
     }
-    
-    function getVersion() public view returns (uint256){
-        AggregatorV3Interface priceFeed = AggregatorV3Interface(0x694AA1769357215DE4FAC081bf1f309aDC325306);
+    /**
+     * @dev Function to get the version of the price feed.
+     * @return The version of the price feed.
+     */
+    function getVersion() public view returns (uint256) {
         return priceFeed.version();
     }
-    
-    modifier onlyOwner {
-        // require(msg.sender == owner);
-        if (msg.sender != i_owner) revert FundMe__NotOwner();
+    /**
+     * @dev Modifier to ensure that only the contract owner can call a function.
+     */
+    modifier onlyOwner() {
+        require(
+            msg.sender == owner,
+            "Only the contract owner can call this function"
+        );
         _;
     }
-    
+    /**
+     * @dev Function to withdraw all the funds from the contract.
+     * Only the contract owner can call this function.
+     */
     function withdraw() public onlyOwner {
-        for (uint256 funderIndex=0; funderIndex < funders.length; funderIndex++){
+        for (uint256 funderIndex = 0; funderIndex < funders.length; funderIndex++) {
             address funder = funders[funderIndex];
             addressToAmountFunded[funder] = 0;
         }
         funders = new address[](0);
-        // // transfer
-        // payable(msg.sender).transfer(address(this).balance);
-        
-        // // send
-        // bool sendSuccess = payable(msg.sender).send(address(this).balance);
-        // require(sendSuccess, "Send failed");
-
-        // call
         (bool callSuccess, ) = payable(msg.sender).call{value: address(this).balance}("");
-        require(callSuccess, "Call failed");
+        require(callSuccess, "Withdrawal failed");
     }
-    // Explainer from: https://solidity-by-example.org/fallback/
-    // Ether is sent to contract
-    //      is msg.data empty?
-    //          /   \ 
-    //         yes  no
-    //         /     \
-    //    receive()?  fallback() 
-    //     /   \ 
-    //   yes   no
-    //  /        \
-    //receive()  fallback()
-
+    /**
+     * @dev Fallback function to handle incoming ETH transfers.
+     * Automatically calls the fund() function.
+     */
     fallback() external payable {
         fund();
     }
-
+    /**
+     * @dev Receive function to handle incoming ETH transfers.
+     * Automatically calls the fund() function.
+     */
     receive() external payable {
         fund();
     }
-
 }
-
-// Concepts we didn't cover yet (will cover in later sections)
-// 1. Enum
-// 2. Events
-// 3. Try / Catch
-// 4. Function Selector
-// 5. abi.encode / decode
-// 6. Hash with keccak256
-// 7. Yul / Assembly
-
-
