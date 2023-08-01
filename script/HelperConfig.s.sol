@@ -1,5 +1,6 @@
-// SPDX-License-Identifier: SEE LICENSE IN LICENSE
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.18;
+
 import {Script} from "forge-std/Script.sol";
 import {MockV3Aggregator} from "../test/mocks/mockV3Aggrevator.sol";
 
@@ -9,6 +10,7 @@ contract HelperConfig is Script {
         address priceFeedAddress;
     }
     // Active network configuration
+
     NetworkConfig public activeNetworkConfig;
     // Constants
     uint8 public constant DECIMAL = 8;
@@ -25,9 +27,8 @@ contract HelperConfig is Script {
 
     // Returns the configuration for Sepolia ETH network
     function getSepoliaEthConfig() public pure returns (NetworkConfig memory) {
-        NetworkConfig memory sepoliaConfig = NetworkConfig({
-            priceFeedAddress: 0x694AA1769357215DE4FAC081bf1f309aDC325306
-        });
+        NetworkConfig memory sepoliaConfig =
+            NetworkConfig({priceFeedAddress: 0x694AA1769357215DE4FAC081bf1f309aDC325306});
         return sepoliaConfig;
     }
 
@@ -47,9 +48,7 @@ contract HelperConfig is Script {
         // Stop the broadcast
         vm.stopBroadcast();
         // Create the Anvil ETH network configuration with the address of the mock V3 aggregator
-        NetworkConfig memory anvilConfig = NetworkConfig({
-            priceFeedAddress: address(mockV3Aggregator)
-        });
+        NetworkConfig memory anvilConfig = NetworkConfig({priceFeedAddress: address(mockV3Aggregator)});
         return anvilConfig;
     }
 }
